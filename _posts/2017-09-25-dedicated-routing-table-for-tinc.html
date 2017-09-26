@@ -1,0 +1,137 @@
+---
+layout: post
+title: Dedicated routing table for tinc
+date: 2017-09-25
+categories: 
+- tinc
+- cgroup
+tags: 
+-
+author: Benda Xu
+excerpt: this post discusses why and how of a dedicated routing table for tinc
+---
+
+<div id="outline-container-org7c585b7" class="outline-2">
+<h2 id="org7c585b7">The need of a dedicated routing table</h2>
+<div class="outline-text-2" id="text-org7c585b7">
+<p>
+We use <code>tinc</code> to make decentralized friend-to-friend network. The
+network is organized in switch mode and presented as a virtual LAN.
+One of its use is to route networks otherwise inaccessible, for
+example a route,
+</p>
+<pre class="example">
+172.28.0.0/16 via 192.168.7.56 dev f2f
+</pre>
+<p>
+It often rises that one node itself is part of the network it is
+designed gateway.  In the above example, the node <code>192.168.7.56</code> has
+address <code>172.28.128.37</code>, and <code>tinc</code> will use in vain its own virtual
+network to connect the node.
+</p>
+
+<p>
+If only <code>tinc</code> is ordered to use a routing table without entries
+offered by itself.  There are several ways to achieve this.
+</p>
+
+<ol class="org-ol">
+<li>Route the IP of the node explicitly with real interfaces, as
+<code>172.28.128.37 via 10.4.9.1 dev wlan0</code>.  The downside is that
+every node has to be entered into the route table.</li>
+
+<li>Run tinc as a specific user and allocate a route table to that
+user, discussed in <a href="https://fugoes.github.io/2017/03/12/Play-with-tinc-iptables-and-dnsmasq.html">fugoes' post</a>.  The downside is that a special
+user has to be maintained and tun/tap interfaces has to be
+created separately.</li>
+
+<li>Run tinc inside a <code>net_cls</code> cgroup, and allocate a route table to
+group, partially documented in <a href="https://www.kernel.org/doc/Documentation/cgroup-v1/net_cls.txt">net<sub>cls</sub> of linux kernel
+documentation</a>. This post will discuss this approach.</li>
+</ol>
+</div>
+</div>
+
+
+<div id="outline-container-org8ed9f69" class="outline-2">
+<h2 id="org8ed9f69">Run tinc inside a net<sub>cls</sub> cgroup</h2>
+<div class="outline-text-2" id="text-org8ed9f69">
+<p>
+I am running OpenRC on Debian, where tinc is started by OpenRC.
+Since OpenRC is cgroup-aware, to enable to cgroup feature, add
+</p>
+<pre class="example">
+rc_controller_cgroups="YES"
+</pre>
+<p>
+into <code>/etc/rc.conf</code>. Next tinc started by OpenRC is assiged to
+net<sub>cls</sub> id 1337, by adding
+</p>
+<pre class="example">
+rc_cgroup_net_cls="net_cls.classid 1337"
+</pre>
+<p>
+into <code>/etc/conf.d/tinc</code>.
+</p>
+
+<p>
+When <code>tinc</code> is started by OpenRC, a subgroup called <code>openrc_tinc</code>
+will be created under <code>/sys/fs/cgroup/net_cls</code> with 1337 in
+<code>net_cls.classid</code>.
+</p>
+</div>
+</div>
+
+<div id="outline-container-org5707097" class="outline-2">
+<h2 id="org5707097">Let a sub-cgroup use a specific route table</h2>
+<div class="outline-text-2" id="text-org5707097">
+<p>
+First, mark packets from net<sub>cls.classid</sub> 1337 as fwmark 1337.
+</p>
+<div class="org-src-container">
+<pre class="src src-shell">iptables -A OUTPUT -m cgroup --cgroup 1337 -j MARK --set-mark 1337
+</pre>
+</div>
+
+<p>
+Then, create a table <code>bare</code> by putting <code>250 bare</code> into
+<code>/etc/iproute2/rt_tables</code>, and let the packets marked 1337 look up
+table <code>bare</code>
+</p>
+<div class="org-src-container">
+<pre class="src src-shell">ip rule add fwmark 1337 lookup bare
+</pre>
+</div>
+
+<p>
+Finally, put the bare routes into <code>bare</code>,
+</p>
+<div class="org-src-container">
+<pre class="src src-shell">ip route add table bare $(ip route show | grep default)
+</pre>
+</div>
+<p>
+Something like <code>default via 10.4.9.1 dev wlan0</code> should be in the
+output of <code>ip route show table bare</code>.  The <code>bare</code>, however, is not
+automatically synchronized with <code>main</code> and each time the default
+route in <code>main</code> changes, the <code>bare</code> has to be updated manully.  <code>ip
+  monitor</code> and <code>dhclient</code> hooks are suitable to do it automatically
+although this post is not going to explore them.
+</p>
+
+<p>
+These commands are independent of <code>tinc</code>, and can be put into
+<code>/etc/rc.local</code> for automatic execution during boot.
+</p>
+</div>
+</div>
+
+<div id="outline-container-org8913c29" class="outline-2">
+<h2 id="org8913c29">Summary and Discussion</h2>
+<div class="outline-text-2" id="text-org8913c29">
+<p>
+By leveraging <code>cgroup</code> and <code>OpenRC</code>, a cleaner approach to direct
+<code>tinc</code> to a dedicated routing table is developed.
+</p>
+</div>
+</div>
