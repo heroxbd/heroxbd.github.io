@@ -10,13 +10,13 @@ highlighter: rouge
 gems: [jekyll-paginate]
 plugins: [jekyll-paginate]
 paginate: 20
-domain_name: 'http://www-sk.icrr.u-tokyo.ac.jp/~heroxbd_s/blog'
+domain_name: 'https://heroxbd.github.io'
 google_analytics: 'UA-XXXXXXXX-X'
 disqus: false
 disqus_shortname: 'your-disqus-shortname'
 
 # Details for the RSS feed generator
-url:            'http://www-sk.icrr.u-tokyo.ac.jp/~heroxbd_s'
+url:            'https://heroxbd.github.io'
 author:         'Benda Xu'
 authorTwitter:  'heroxbd'
 
