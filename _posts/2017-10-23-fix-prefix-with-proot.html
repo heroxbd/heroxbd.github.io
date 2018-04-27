@@ -1,0 +1,83 @@
+---
+layout: post
+title: Fix Gentoo Prefix with PRoot
+date: 2017-10-23
+categories: 
+-
+tags: 
+- Gentoo
+- Prefix
+- PRoot
+author: Benda Xu
+excerpt: this post how to relocate Gentoo Prefix with PRoot
+---
+<div id="outline-container-org910cd3a" class="outline-2">
+<h2 id="org910cd3a">Broken Prefix</h2>
+<div class="outline-text-2" id="text-org910cd3a">
+<p>
+Our institute administrator sliently relocated directories where I
+installed Gentoo Prefix.  I can bootstrap again, but I want to
+explore something new.  PRoot has been in my radar for years, and it
+was the main force behind GNURoot and termux for Android.
+</p>
+</div>
+</div>
+
+<div id="outline-container-orge3c8bb5" class="outline-2">
+<h2 id="orge3c8bb5">PRoot</h2>
+<div class="outline-text-2" id="text-orge3c8bb5">
+<ul class="org-ul">
+<li><p>
+static build
+<a href="https://github.com/proot-me/proot-static-build">https://github.com/proot-me/proot-static-build</a>
+proot -b /disk01/xmass/gentoo:/disk/xmass/gentoo
+</p>
+
+<p>
+very slow
+</p></li>
+
+<li>change prefix in startprefix</li>
+
+<li>override environment variable
+export EPREFIX=/disk01/xmass/gentoo</li>
+
+<li><p>
+sync portage
+change location of gentoo in repos.conf to speed up rsync
+</p>
+<pre class="example">
+location = /disk01/xmass/gentoo/usr/portage
+</pre>
+
+<p>
+emerge &#x2013;sync
+</p></li>
+
+<li><p>
+emerge -1 portage baselayout
+</p>
+
+<p>
+env-update
+source profile
+</p></li>
+</ul>
+
+
+<p>
+gcc gcc-config
+dynamic loader is imprinted by gcc
+</p>
+
+<ul class="org-ul">
+<li>portage bug: <a href="https://bugs.gentoo.org/607868">https://bugs.gentoo.org/607868</a></li>
+</ul>
+<ul class="org-ul">
+<li>m4 does not work
+stack overflow</li>
+
+<li>emerge -1evDt @system</li>
+</ul>
+</div>
+</div>
